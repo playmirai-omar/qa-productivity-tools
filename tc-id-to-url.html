@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>TC ID CONVERTER</title>
+  </head>
+  <body>
+    <div class="toggleLightDark" onclick="toggleTheme()">🌑 / 🌞</div>
+    
+    <h1 class="title">Convert TC ID to URL</h1>
+    <div class="module">
+      <label for="inputID">TC ID:</label>
+      <textarea id="inputID" rows="10"></textarea>
+
+      <table>
+        <tr>
+          <th>
+            <p class="pLabel">Environment: </p>
+          </th>
+          <td>
+            <label for="env">
+              <select id="env">
+                <option value=0>
+                  Default
+                </option>
+                <option value=1>
+                  Stage
+                </option>
+              </select>
+            </label>
+          </td>
+          <th>
+            <p class="pLabel">Type: </p>
+          </th>
+          <td>
+            <label for="type">
+              <select id="type">
+                <option value=3>
+                  From ID
+                </option>
+                <option value=0>
+                  Tests (Runs)
+                </option>
+                <option value=1>
+                  Cases (Suites)
+                </option>
+              </select>
+            </label>
+          </td>
+        </tr>
+        <tr>
+          <th>
+            <p class="pLabel">CSV Export: </p>
+          </th>
+          <td>
+            <label for="exportCSVURL">
+              <select id="exportCSVURL">
+                <option value=0>
+                  Off
+                </option>
+                <option value=1>
+                  On
+                </option>
+              </select>
+            </label>
+          </td>
+          <th>
+            <p class="pLabel">URL Shorten: </p>
+          </th>
+          <td>
+            <label for="shorten">
+              <select id="shorten">
+                <option value=1>
+                  On
+                </option>
+                <option value=0>
+                  Off
+                </option>
+              </select>
+            </label>
+          </td>
+        </tr>
+        <tr>
+          <th>
+            <button onclick="convertTCID()">✨CONVERT</button>
+          </th>
+        </tr>
+      </table>
+
+      <label for="outputURL">TC URL:</label>
+      <div id="outputURL"></div>
+      <tr>
+        <th>
+          <button onclick="copyText(this, 'outputURL', false)" id="buttonCopyURL">🎉COPY</button>
+        </th>
+        <th>
+          <button onclick="copyText(this, 'outputURL', true)" id="buttonCopyURLL">🎉COPY LINKS</button>
+        </th>
+      </tr>
+    </div>
+    
+    <!-- /////////////////////////////////// -->
+    <h1 class="title">Convert TC URL to ID</h1>
+    <div class="module">
+      <label for="inputURL">TC URL:</label>
+      <textarea id="inputURL" rows=10 cols=60></textarea>
+
+      <table>
+        <tr>
+          <th>
+            <p class="pLabel">Hyperlink: </p>
+          </th>
+          <td>
+            <label for="hyperlink">
+              <select id="hyperlink">
+                <option value=1>
+                  Yes
+                </option>
+                <option value=0>
+                  No
+                </option>
+              </select>
+            </label>
+          </td>
+          <th>
+            <p class="pLabel">CSV Export: </p>
+          </th>
+          <td>
+            <label for="exportCSVID">
+              <select id="exportCSVID">
+                <option value=0>
+                  Off
+                </option>
+                <option value=1>
+                  On
+                </option>
+              </select>
+            </label>
+          </td>
+        </tr>
+        <tr>
+          <th>
+            <button onclick="convertTCURL()">✨CONVERT</button>
+          </th>
+        </tr>
+      </table>
+      
+      <label for="outputID">TC ID:</label>
+      <div id="outputID"></div>
+      <tr>
+        <th>
+          <button onclick="copyText(this, 'outputID', false)" id="buttonCopyID">🎉COPY</button>
+        </th>
+        <th>
+          <button onclick="copyText(this, 'outputID', true)" id="buttonCopyIDL">🎉COPY LINKS</button>
+        </th>
+      </tr>
+    </div>
+    <script>
+      function convertTCID() {
+        //url example "https://scopely.testrail.com/index.php?/cases/view/";
+        const urlHead = "https://scopely";
+        const urlMiddle = ".testrail.com/index.php?/";
+        const urlTail = "/view/";
+
+        const envStage = "stage";
+
+        const urlTest = "tests";
+        const urlCase = "cases";
+        
+        const toggleEnv  = document.getElementById("env").value == 1;
+        const toggleType = document.getElementById("type").value;
+
+        const toggleExportCSV  = document.getElementById("exportCSVURL").value == 1;
+        const toggleShortenURL = document.getElementById("shorten").value == 1;
+
+        const inputRaw   = document.getElementById("inputID").value;
+        const inputSplit = inputRaw.replaceAll(/[\r\n]+/g, ",").split(",");
+
+        const outputNode = document.getElementById("outputURL");
+
+        var urlString = toggleEnv ? urlHead + envStage : urlHead;
+        urlString += urlMiddle;
+        
+        outputNode.innerHTML = "";
+
+        for (var i = 0; i < inputSplit.length; i++) {
+          var trimmedLine = inputSplit[i].trim();
+          
+          var prependLetter = "";
+          var tmpLine       = "";
+          
+          for (var j = 9; j > 6; j--) {
+            tmpLine = "";
+            
+            const regex     = new RegExp(`\\d{${j}}`);
+            const tmpString = trimmedLine.search(regex);
+            
+            if (tmpString != -1) {
+              const start = tmpString;
+              const end   = tmpString + j + 1;
+              
+              if (toggleType == 3) {
+                if (tmpString > 0) {
+                  prependLetter = trimmedLine.charAt(tmpString - 1);
+                
+                  if (!(prependLetter === "T" || prependLetter === "C")) {
+                    prependLetter = "";
+                  }
+                  
+                } // Else prependLetter is ""
+              } 
+              else {
+                prependLetter = toggleType == 0 ? "T" : "C";
+              }
+              
+              tmpLine = trimmedLine.substring(tmpString, end);
+              j = 0;
+            } 
+            else {
+              tmpLine = "";
+            }
+          }
+
+          trimmedLine = tmpLine.replace(/\D/g, "");
+          
+          var urlStringTmp  = urlString;
+          var toggleTypeTmp = toggleType;
+          
+          if (toggleTypeTmp == 3) {
+            if (prependLetter !== "") {
+              toggleTypeTmp = prependLetter === "T" ? 0 : 1;
+            } 
+            else {
+              trimmedLine = "";
+            }
+          }
+
+          urlStringTmp += toggleTypeTmp == 0 ? urlTest : urlCase;
+          urlStringTmp += urlTail;
+          
+          if (trimmedLine.length > 6 && trimmedLine.length < 11) {
+            const line = urlStringTmp + trimmedLine;
+
+            var innerHTML = "";
+            var innerLine = line;
+            var innerLineNewLine = "\n";
+
+            if (toggleExportCSV && outputNode.children.length > 0) {
+              innerHTML = ", ";
+              innerLine = ", " + innerLine;
+              innerLineNewLine = "";
+            }
+            
+            innerHTML +=  prependLetter + trimmedLine;
+            innerLine = innerLine + innerLineNewLine;
+
+            const newLink     = document.createElement("a");
+            newLink.innerHTML = toggleShortenURL ? innerHTML : innerLine;
+            newLink.href      = line;
+
+            outputNode.appendChild(newLink);
+
+            if (!toggleExportCSV) {
+              outputNode.appendChild(document.createElement("br"));
+            }
+          }
+        }
+      }
+    </script>
+    <script>
+      function convertTCURL() {
+        const toggleHyperlink = document.getElementById("hyperlink").value == 1;
+        const toggleCSVExport = document.getElementById("exportCSVID").value == 1;
+        
+        const inputRaw    = document.getElementById("inputURL").value;
+        const inputSplit = inputRaw.replaceAll(/[\r\n]+/g, ",").split(",");//.split(/[\r\n]+/);
+        
+        const outputNode = document.getElementById("outputID");
+        
+        outputNode.innerHTML = "";
+        
+        for (var i = 0; i < inputSplit.length; i++) {
+          var trimmedLine = inputSplit[i].trim();
+          const urlString = trimmedLine;
+
+          var inputLetter = "";
+          if (trimmedLine.includes("tests")) {
+            inputLetter = "T";
+          } 
+          else if (trimmedLine.includes("cases")) {
+            inputLetter = "C";
+          } 
+          else {
+            trimmedLine = "";
+          }
+          
+          trimmedLine = trimmedLine.replace(/\D/g, "");
+          
+          if(trimmedLine.length === 0) {
+            continue;
+          }
+
+          const letter = inputLetter; // /\d+/g
+          const line = letter + trimmedLine;
+
+          const hasOneChild = !(outputNode.children.length > 0);
+
+          var shouldAppend = false;
+          var shouldBreak  = false;
+          
+          var newID; // Element
+          // if (hasOneChild || !toggleCSVExport) {
+            
+          //   if (toggleHyperlink) {
+          //     newID = document.createElement("a");
+          //     shouldBreak = true;
+          //   }
+          //   else {
+          //     newID = document.createElement("p");
+          //   }
+            
+          //   shouldAppend = true;
+          // } 
+          // else {
+          //   newID = outputNode.children[0];
+          // } 
+
+          if (!toggleHyperlink && toggleCSVExport && !hasOneChild) {
+            newID = outputNode.children[0];
+          } 
+          else {
+            if (toggleHyperlink) {
+              newID = document.createElement("a");
+              if (!toggleCSVExport)
+              {
+                shouldBreak = true;
+              }
+            }
+            else 
+            {
+              newID = document.createElement("p");
+            }
+
+            shouldAppend = true;
+          }
+
+          var innerLine = line;
+          if (toggleCSVExport && !hasOneChild) {
+            innerLine = newID.innerHTML + ", " + line;
+          }
+
+          newID.innerHTML = innerLine;
+          
+          if (toggleHyperlink) {
+            newID.href = urlString;
+          }
+
+          if (shouldAppend) {
+            outputNode.appendChild(newID);
+          }
+          
+          if (shouldBreak) {
+            outputNode.appendChild(document.createElement("br"));
+          }
+          
+        }
+      }
+    </script>
+    <script>
+      function copyText(source, elementID, isLink){
+
+        const elementToCopy = document.getElementById(elementID);
+        const button = document.getElementById(source.id);
+        const buttonInitialState = button.innerText;
+
+        const elementHTML = elementToCopy.innerHTML;// outerHTML innerHTML;
+        const elementText = elementToCopy.innerText;
+
+        console.log(isLink);
+
+        if (isLink) {
+          const elementBlobL = new Blob([elementHTML], { type: "text/html" });
+          const elementBlobT = new Blob([elementText], { type: "text/plain" });
+          const clipboardItem = new ClipboardItem({
+            "text/html": elementBlobL,
+            "text/plain": elementBlobT
+          });
+          navigator.clipboard.write([clipboardItem]);
+        }
+        else {
+          navigator.clipboard.writeText(elementText);
+        }
+        
+
+        button.innerHTML = "🎉COPIED!!";
+
+        setTimeout(() => {
+          button.innerHTML = buttonInitialState;
+        }, 2000);
+      }
+    </script>
+    <script>
+      function toggleTheme(){
+        document.body.classList.toggle("light");
+      }
+    </script>
+    <style>
+      :root {
+        --bg:#0b1220;
+        --card:#121a2c;
+        --border:#24304d;
+        --text:#eaf0ff;
+        --muted:#a9b6d6;
+        --accent:#7dd3fc;
+        --accentVisited:#e77dfc;
+      }
+      /* :sun_with_face: Light mode overrides */
+      body.light {
+        --bg:#f4f6fb;
+        --card:#ffffff;
+        --border:#d6dbea;
+        --text:#0f172a;
+        --muted:#475569;
+        --accent:#2563eb;
+        --accentVisited:#ad25eb;
+      }
+      *{box-sizing:border-box}
+      .toggleLightDark {
+        position: absolute;
+        top:14px;
+        right: 16px;
+        cursor:pointer;
+        padding:6px 10px;
+        border-radius:8px;
+        border:1px solid var(--border);
+        background:var(--card);
+        font-size:13px;
+        user-select:none;
+      }
+      body {
+        padding:28px 16px;
+        font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+        background:var(--bg); 
+        color:var(--text);
+      }
+      .title, .module {
+        max-width:980px;
+        margin:18px auto 10px;
+      }
+      .title {
+        font-size:22px;
+      }
+      .module {
+        border:1px solid var(--border); 
+        border-radius:14px;
+        padding:16px;
+      }
+      label {
+        font-weight:600
+      }
+      .pLabel {
+        font-weight:600
+      }
+      textarea, select, button {
+        padding:10px 14px;
+      }
+      textarea, select {
+        width:100%; 
+        border-radius:10px; 
+        border:1px solid var(--border);
+        background:var(--card); 
+        color:var(--text); 
+        outline:none;
+      }
+      textarea {
+        min-height:140px; 
+        resize:vertical;
+        margin:10px 0 14px;
+        font-family:ui-monospace,Menlo,Consolas,monospace
+      }
+      select {
+        max-width:100px
+      }
+      button {
+        border:1px solid var(--border);
+        background:transparent;
+        color:var(--text);
+        border-radius:10px;
+        cursor:pointer;
+        font-weight:700;
+      }
+      button:hover {
+        border-color:var(--accent)
+      }
+      a {
+        color:var(--accent);
+        text-decoration:none
+      }
+      a:visited {
+        color:var(--accentVisited);
+        text-decoration:none
+      }
+      a:hover {
+        text-decoration:underline
+      }
+      #outputURL, #outputID {
+        margin-top:10px; 
+        padding:10px;
+        border-radius:10px;
+        border:1px dashed var(--border);
+        background:rgba(0,0,0,.08);
+        min-height:44px;
+        overflow-wrap:anywhere;
+      }
+    </style>
+  </body>
+</html>
