@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>TESTRAIL XML EXTRACTOR</title>
+  </head>
+  <body>
+    <div class="toggleLightDark" onclick="toggleTheme()">🌑 / 🌞</div>
+    
+    <h1 class="title">Testrail XML Field Extractor</h1>
+    <div class="module">
+      
+      <label for="inFile">Testrail XML File:</label>
+      <input type="file" id="inFile">
+      
+      <table>
+        <tr>
+          <th>
+            <p class="pLabel">Fields (comma separted): </p>
+          </th>
+          <td>
+            <label for="inField">
+              <input type="text" id="inField">
+            </label>
+          </td>
+        </tr>
+        <tr>
+          <th>
+            <button onclick="extractXML(0)">✨EXTRACT</button>
+          </th>
+          <th>
+            <button onclick="extractXML(1)">✨AUTO EXTRACT</button>
+          </th>
+        </tr>
+      </table>
+
+      <label for="outColumn">Extracted Field:</label>
+      <div id="outColumn"></div>
+      <button onclick="copyText(this, 'outColumn', false)" id="buttonCopy">🎉COPY</button>
+      <button onclick="copyText(this, 'outColumn', true)" id="buttonCopyHTML">🎉COPY HTML</button>
+    </div>
+    <script>
+      function extractXML(inToggle) {
+        const inFile = document.getElementById("inFile").files[0];
+        const outputNode = document.getElementById("outColumn");
+        const inputField = document.getElementById("inField").value;
+        
+        outputNode.innerHTML = "";
+        
+        const reader = new FileReader();
+        reader.readAsText(inFile);
+
+        reader.addEventListener("load", () => {
+          const parserXML = new DOMParser();
+          const xmlDoc = parserXML.parseFromString(reader.result, "text/xml");
+          const tests = xmlDoc.getElementsByTagName("test");
+
+          const outTable = document.createElement("table");
+
+          var inFields = [];
+          if (inToggle == 0) {
+            const tmpInputField = inputField.split(",");
+            for (var tmpField of tmpInputField) {
+              inFields.push(tmpField.trim());
+            }
+          }
+          else {
+            inFields = TestRailFields(inToggle);
+          }
+          
+          for (let i = 0; i < tests.length; i++) {
+            const newRow = document.createElement("tr");
+            
+            for (const tag of inFields) {
+              const fields = tests[i].getElementsByTagName(tag)[0];
+
+              var tempString = "";
+              var newLines = 0;
+              
+              if (TestRailTagIsHTML(tag)) {
+                
+                const parserHTML = new DOMParser();
+                const htmlDoc = parserHTML.parseFromString(fields.textContent, 'text/html');
+                const htmlBody = htmlDoc.querySelector("body");
+                const htmlPs = htmlBody.getElementsByTagName("p");
+              
+                for (let k = 0; k < htmlPs.length; k++) {
+                  if (k > 0) {
+                    tempString += "<br style='mso-data-placement:same-cell;' />";
+                    //"<br style='mso-data-placement:same-cell;' />" "&#160;" "&#10;" "\n";
+                    newLines += 1;
+                  }
+                  
+                  tempString += htmlPs[k].innerText;
+                }
+                // tempString += htmlBody.textContent;
+              }
+              else {
+                  if (typeof(fields) != "undefined") {
+                    tempString = fields.textContent;
+                  }
+                  
+              }
+
+              tempString = tempString === "" ? "- " : tempString;
+            
+              const newCol = document.createElement("td");
+              newCol.innerHTML = tempString;
+
+              newRow.appendChild(newCol);
+            }
+
+            outTable.appendChild(newRow);
+          }
+
+          outputNode.appendChild(outTable);
+        });
+      }
+
+      function TestRailFields(index) {
+        const fieldsAllSorted = [
+          "ID", "Title", "Assigned To", 
+          "Automation", "Automation Notes", "Automation Script", "Automation Type",
+          "Build Type", "Case Assigned To", "Case ID", "Comment",
+          "Critical Path Scope", "Defects", "Description", "Elapsed",
+          "Estimate", "Expected Result", "Forecast", "Guideline",
+          "In Progress", "Milestone", "Plan", "Plan ID", "Platform", 
+          "Preconditions", "Priority", "References", "Run", "Run Configuration", 
+          "Run ID", "Section", "Section Depth", "Section Hierarchy", "Status",
+          "Steps", "Steps (Additional Info)", "Steps (Expected Result)",
+          "Steps (References)", "Steps (Shared step ID)", "Steps (Step)",
+          "Template", "Test Case Labels", "Test Labels", "Test Script Name",
+          "Tested By", "Tested On", "Type", "Version"
+        ];
+
+        const fieldsLite = [
+          "id", "title", "caseid",
+          "status", "comment",
+          "defects", "elapsed",
+          "assignedto"
+        ];
+
+        const fieldsGeneral = [
+          "milestone", "id",
+        ];
+
+        if (index = 0) {
+          return fieldsAllSorted;
+        }
+        else if (index = 1) {
+          return fieldsLite;
+        }
+      }
+      function TestRailTagIsHTML(tag) {
+        var isHTML = false;
+        if (tag === "comment") {
+          isHTML = true;
+        }
+
+          return isHTML;
+      }
+    </script>
+    <script>
+      function copyText(source, elementID, isLink){
+
+        const elementToCopy = document.getElementById(elementID);
+        const button = document.getElementById(source.id);
+        const buttonInitialState = button.innerText;
+
+        const elementHTML = elementToCopy.innerHTML;// outerHTML innerHTML;
+        const elementText = elementToCopy.innerText;
+
+        console.log(isLink);
+
+        if (isLink) {
+          const elementBlobL = new Blob([elementHTML], { type: "text/html" });
+          const elementBlobT = new Blob([elementText], { type: "text/plain" });
+          const clipboardItem = new ClipboardItem({
+            "text/html": elementBlobL,
+            "text/plain": elementBlobT
+          });
+          navigator.clipboard.write([clipboardItem]);
+        }
+        else {
+          navigator.clipboard.writeText(elementText);
+        }
+
+        button.innerHTML = "🎉COPIED!!";
+
+        setTimeout(() => {
+          button.innerHTML = buttonInitialState;
+        }, 2000);
+      }
+    </script>
+    <script>
+      function toggleTheme(){
+        document.body.classList.toggle("light");
+      }
+    </script>
+    <style>
+      :root {
+        --bg:#0b1220;
+        --card:#121a2c;
+        --border:#24304d;
+        --text:#eaf0ff;
+        --muted:#a9b6d6;
+        --accent:#7dd3fc;
+        --accentVisited:#e77dfc;
+      }
+      /* :sun_with_face: Light mode overrides */
+      body.light {
+        --bg:#f4f6fb;
+        --card:#ffffff;
+        --border:#d6dbea;
+        --text:#0f172a;
+        --muted:#475569;
+        --accent:#2563eb;
+        --accentVisited:#ad25eb;
+      }
+      *{box-sizing:border-box;}
+      .toggleLightDark {
+        position: absolute;
+        top:14px;
+        right: 16px;
+        cursor:pointer;
+        padding:6px 10px;
+        border-radius:8px;
+        border:1px solid var(--border);
+        background:var(--card);
+        font-size:13px;
+        user-select:none;
+      }
+      body {
+        padding:28px 16px;
+        font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+        background:var(--bg); 
+        color:var(--text);
+      }
+      .title, .module {
+        /* max-width:980px; */
+        margin:18px auto 10px;
+      }
+      .title {
+        font-size:22px;
+      }
+      .module {
+        border:1px solid var(--border); 
+        border-radius:14px;
+        padding:16px;
+      }
+      label {
+        font-weight:600
+      }
+      .pLabel {
+        font-weight:600
+      }
+      input, select, button {
+        padding:10px 14px;
+      }
+      input, select {
+        width:100%; 
+        border-radius:10px; 
+        border:1px solid var(--border);
+        background:var(--card); 
+        color:var(--text); 
+        outline:none;
+      }
+      input {
+        margin:10px 0 14px;
+        font-family:ui-monospace,Menlo,Consolas,monospace
+      }
+      textarea, p, tr {
+        white-space:pre;
+      }
+      select {
+        max-width:100px
+      }
+      button {
+        border:1px solid var(--border);
+        background:transparent;
+        color:var(--text);
+        border-radius:10px;
+        cursor:pointer;
+        font-weight:700;
+      }
+      button:hover {
+        border-color:var(--accent)
+      }
+      a {
+        color:var(--accent);
+        text-decoration:none
+      }
+      a:visited {
+        color:var(--accentVisited);
+        text-decoration:none
+      }
+      a:hover {
+        text-decoration:underline
+      }
+      #outColumn {
+        margin-top:10px;
+        padding:10px;
+        border-radius:10px;
+        border:1px dashed var(--border);
+        background:rgba(0,0,0,.08);
+        min-height:5px;
+        overflow-wrap:anywhere;
+        /* white-space:nowrap; */
+      }
+    </style>
+  </body>
+</html>
