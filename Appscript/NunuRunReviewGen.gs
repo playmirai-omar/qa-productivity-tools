@@ -94,8 +94,11 @@ function valueSpec(run, column) {
     case "invalidBugs":
       return { richText: bugRichText(run) };
 
+    case "testrailCount":
+      return { value: run.testrailCount === "" ? "" : run.testrailCount };
+
     case "reviewTime": case "fixingTime": case "validBugs":
-    case "bugsReported": case "jira": case "testrailCount": case "comments":
+    case "bugsReported": case "jira": case "comments":
       return {};
   }
 }
@@ -248,7 +251,8 @@ function syncNunu(apiKey, dateFrom, dateTo, limit, testNameFilter, userIdFilter,
 
   const raw      = collectRuns(apiKey, filters, limit);
   const filtered = filterRuns(raw, filters);
-  enrichRunDetails(filtered, apiKey)
+  enrichRunDetails(filtered, apiKey);
+  enrichWithTestrailCounts(filtered, apiKey);
   const runs     = sortRuns(filtered);
   if (!runs.length) return "No runs found.";
 
@@ -300,6 +304,7 @@ function normalizeRun(item) {
     startedAt:           started,
     startedDay:          started.slice(0, 10),
     name:                (item.test  || {}).name || "",
+    testId:              (item.test  || {}).id   || "",
     result:              item.result || "",
     buildName:           (item.build || {}).name || "",
     durationMs:          item.duration_ms || 0,
@@ -311,6 +316,7 @@ function normalizeRun(item) {
       return { id: p.id, playerNumber: p.player_number };
     }),
     bugs: [],
+    testrailCount: "",
   };
 }
 
@@ -354,6 +360,40 @@ function fetchRunDetails(apiKey, runId) {
   const res  = UrlFetchApp.fetch(url, { headers: { "X-Api-Key": apiKey }, muteHttpExceptions: true });
   const body = JSON.parse(res.getContentText());
   return body.run || body;   // MCP wraps in {run: ...}; the direct API may not
+}
+
+// TestRail case count = distinct case IDs across every step of the test's
+// latest version. Nunu doesn't preserve historical TestRail mappings when a
+// test is re-versioned, so "latest" is all we can retrieve. Cached per test id
+// so multiple runs of the same test only fetch once.
+function enrichWithTestrailCounts(runs, apiKey) {
+  const cache = {};
+  runs.forEach(function(r) {
+    if (!r.testId) return;
+    if (cache[r.testId] === undefined) cache[r.testId] = countTestrailCases(fetchTest(apiKey, r.testId));
+    r.testrailCount = cache[r.testId];
+  });
+}
+
+function countTestrailCases(testBody) {
+  const byKey = (testBody.test || testBody).players_by_key || {};
+  const ids   = {};
+  Object.keys(byKey).forEach(function(pk) {
+    const items = (byKey[pk] || {}).items_by_key || {};
+    Object.keys(items).forEach(function(ik) {
+      const versions = ((items[ik].testrail || {}).versions) || {};
+      Object.keys(versions).forEach(function(v) {
+        (versions[v].cases || []).forEach(function(c) { ids[c.id] = true; });
+      });
+    });
+  });
+  return Object.keys(ids).length;
+}
+
+function fetchTest(apiKey, testId) {
+  const url  = NUNU_BASE + "/project/" + PROJECT_ID + "/tests/" + testId;
+  const res  = UrlFetchApp.fetch(url, { headers: { "X-Api-Key": apiKey }, muteHttpExceptions: true });
+  return JSON.parse(res.getContentText());
 }
 
 function slugFromDetectedAt(iso) {
